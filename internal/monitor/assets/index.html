@@ -191,6 +191,73 @@
       font-weight: 500;
     }
 
+    /* Region Cards */
+    .region-card {
+      cursor: pointer;
+      position: relative;
+    }
+
+    .region-card:hover {
+      border-color: var(--primary);
+    }
+
+    .region-card.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+    }
+
+    .region-card .stat-value {
+      font-size: 36px;
+    }
+
+    .region-card .stat-trend {
+      color: var(--text-secondary);
+    }
+
+    /* Region Filter */
+    .region-filter {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .region-btn {
+      padding: 6px 12px;
+      font-size: 13px;
+      border-radius: 8px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .region-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .region-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    /* Region Badge in Node Card */
+    .region-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(0, 122, 255, 0.1);
+      color: var(--primary);
+      margin-left: 8px;
+    }
+
     /* Nodes Grid */
     .nodes-grid {
       display: grid;
@@ -964,6 +1031,52 @@
       </div>
     </div>
 
+    <!-- GeoIP Region Stats -->
+    <div class="stats" id="regionStats" style="display: none;">
+      <div class="stat-card region-card" data-region="jp">
+        <div class="stat-label">🇯🇵 日本</div>
+        <div class="stat-value" id="regionJP">0</div>
+        <div class="stat-trend" id="regionJPHealthy">0 健康</div>
+      </div>
+      <div class="stat-card region-card" data-region="kr">
+        <div class="stat-label">🇰🇷 韩国</div>
+        <div class="stat-value" id="regionKR">0</div>
+        <div class="stat-trend" id="regionKRHealthy">0 健康</div>
+      </div>
+      <div class="stat-card region-card" data-region="us">
+        <div class="stat-label">🇺🇸 美国</div>
+        <div class="stat-value" id="regionUS">0</div>
+        <div class="stat-trend" id="regionUSHealthy">0 健康</div>
+      </div>
+      <div class="stat-card region-card" data-region="hk">
+        <div class="stat-label">🇭🇰 香港</div>
+        <div class="stat-value" id="regionHK">0</div>
+        <div class="stat-trend" id="regionHKHealthy">0 健康</div>
+      </div>
+      <div class="stat-card region-card" data-region="tw">
+        <div class="stat-label">🇹🇼 台湾</div>
+        <div class="stat-value" id="regionTW">0</div>
+        <div class="stat-trend" id="regionTWHealthy">0 健康</div>
+      </div>
+      <div class="stat-card region-card" data-region="other">
+        <div class="stat-label">🌍 其他</div>
+        <div class="stat-value" id="regionOther">0</div>
+        <div class="stat-trend" id="regionOtherHealthy">0 健康</div>
+      </div>
+    </div>
+
+    <!-- Region Filter -->
+    <div class="region-filter" id="regionFilter" style="display: none; margin-bottom: 16px;">
+      <span style="margin-right: 8px; color: var(--text-secondary);">筛选地域:</span>
+      <button class="btn btn-sm region-btn active" data-region="all" onclick="filterByRegion('all')">全部</button>
+      <button class="btn btn-sm region-btn" data-region="jp" onclick="filterByRegion('jp')">🇯🇵 JP</button>
+      <button class="btn btn-sm region-btn" data-region="kr" onclick="filterByRegion('kr')">🇰🇷 KR</button>
+      <button class="btn btn-sm region-btn" data-region="us" onclick="filterByRegion('us')">🇺🇸 US</button>
+      <button class="btn btn-sm region-btn" data-region="hk" onclick="filterByRegion('hk')">🇭🇰 HK</button>
+      <button class="btn btn-sm region-btn" data-region="tw" onclick="filterByRegion('tw')">🇹🇼 TW</button>
+      <button class="btn btn-sm region-btn" data-region="other" onclick="filterByRegion('other')">🌍 Other</button>
+    </div>
+
     <div id="nodesContainer" class="nodes-grid"></div>
 
     <div id="emptyState" class="empty" style="display: none;">
@@ -1304,21 +1417,116 @@
         if (!res.ok) throw new Error('请求失败');
         const data = await res.json();
         render(data.nodes || []);
-        updateStats(data.nodes || []);
+        updateStats(data);
         document.getElementById('lastUpdate').textContent = `更新于 ${new Date().toLocaleTimeString('zh-CN')}`;
       } catch (err) {
         showToast('刷新失败: ' + err.message, 'error');
       }
     }
 
-    function updateStats(nodes) {
-      document.getElementById('totalNodes').textContent = nodes.length;
-      document.getElementById('healthyNodes').textContent = nodes.filter(n => !n.blacklisted && n.failure_count === 0).length;
+    function updateStats(payload) {
+      payload = payload || {};
+      const nodes = payload.nodes || [];
+      const totalNodesRaw = Number(payload.total_nodes);
+      const totalNodes = Number.isFinite(totalNodesRaw) ? totalNodesRaw : nodes.length;
+      document.getElementById('totalNodes').textContent = totalNodes;
+      document.getElementById('healthyNodes').textContent = nodes.filter(n => !n.blacklisted && n.initial_check_done && n.available).length;
       document.getElementById('activeConnections').textContent = nodes.reduce((sum, n) => sum + (n.active_connections || 0), 0);
       document.getElementById('blacklistedNodes').textContent = nodes.filter(n => n.blacklisted).length;
+
+      // Update region statistics
+      const regionStats = payload.region_stats || {};
+      const regionHealthy = payload.region_healthy || {};
+      const hasRegionData = Object.keys(regionStats).length > 0;
+
+      // Show/hide region stats section
+      const regionStatsEl = document.getElementById('regionStats');
+      const regionFilterEl = document.getElementById('regionFilter');
+      if (hasRegionData) {
+        regionStatsEl.style.display = 'grid';
+        regionFilterEl.style.display = 'flex';
+
+        // Update each region
+        const regions = ['jp', 'kr', 'us', 'hk', 'tw', 'other'];
+        regions.forEach(region => {
+          const count = regionStats[region] || 0;
+          const healthy = regionHealthy[region] || 0;
+          const valueEl = document.getElementById('region' + region.toUpperCase());
+          const healthyEl = document.getElementById('region' + region.toUpperCase() + 'Healthy');
+          if (valueEl) valueEl.textContent = count;
+          if (healthyEl) healthyEl.textContent = healthy + ' 健康';
+        });
+      } else {
+        regionStatsEl.style.display = 'none';
+        regionFilterEl.style.display = 'none';
+      }
+    }
+
+    // Region filter state
+    let currentRegionFilter = 'all';
+    let allNodesCache = [];
+
+    function filterByRegion(region) {
+      currentRegionFilter = region;
+
+      // Update button states
+      document.querySelectorAll('.region-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.region === region);
+      });
+
+      // Update region card states
+      document.querySelectorAll('.region-card').forEach(card => {
+        card.classList.toggle('active', card.dataset.region === region);
+      });
+
+      // Filter and re-render nodes
+      if (allNodesCache.length > 0) {
+        const filtered = region === 'all'
+          ? allNodesCache
+          : allNodesCache.filter(n => (n.region || 'other') === region);
+        renderNodes(filtered);
+      }
+    }
+
+    // Helper to get region emoji
+    function getRegionEmoji(region) {
+      const emojis = {
+        'jp': '🇯🇵',
+        'kr': '🇰🇷',
+        'us': '🇺🇸',
+        'hk': '🇭🇰',
+        'tw': '🇹🇼',
+        'other': '🌍'
+      };
+      return emojis[region] || '🌍';
+    }
+
+    // Helper to get region name
+    function getRegionName(region) {
+      const names = {
+        'jp': 'JP',
+        'kr': 'KR',
+        'us': 'US',
+        'hk': 'HK',
+        'tw': 'TW',
+        'other': 'Other'
+      };
+      return names[region] || 'Other';
     }
 
     function render(nodes) {
+      // Cache all nodes for filtering
+      allNodesCache = nodes;
+
+      // Apply current region filter
+      const filteredNodes = currentRegionFilter === 'all'
+        ? nodes
+        : nodes.filter(n => (n.region || 'other') === currentRegionFilter);
+
+      renderNodes(filteredNodes);
+    }
+
+    function renderNodes(nodes) {
       const container = document.getElementById('nodesContainer');
       const emptyState = document.getElementById('emptyState');
 
@@ -1333,13 +1541,15 @@
         const status = getNodeStatus(node);
         const latency = node.last_latency_ms || -1;
         const quality = getLatencyQuality(latency);
+        const region = node.region || 'other';
+        const regionBadge = node.region ? `<span class="region-badge">${getRegionEmoji(region)} ${getRegionName(region)}</span>` : '';
 
         return `
-          <div class="node-card ${status}">
+          <div class="node-card ${status}" data-region="${region}">
             <div class="node-header">
               <div class="node-info">
-                <div class="node-name">${node.name || node.tag}</div>
-                <div class="node-tag">${node.tag}</div>
+                <div class="node-name">${node.name || node.tag}${regionBadge}</div>
+                <div class="node-tag">${node.tag}${node.country ? ` · ${node.country}` : ''}</div>
               </div>
               <span class="status-badge ${status}">
                 <span class="status-icon"></span>

@@ -25,6 +25,7 @@ type Config struct {
 	Pool                PoolConfig                `yaml:"pool"`
 	Management          ManagementConfig          `yaml:"management"`
 	SubscriptionRefresh SubscriptionRefreshConfig `yaml:"subscription_refresh"`
+	GeoIP               GeoIPConfig               `yaml:"geoip"`
 	Nodes               []NodeConfig              `yaml:"nodes"`
 	NodesFile           string                    `yaml:"nodes_file"`    // 节点文件路径，每行一个 URI
 	Subscriptions       []string                  `yaml:"subscriptions"` // 订阅链接列表
@@ -33,6 +34,14 @@ type Config struct {
 	SkipCertVerify      bool                      `yaml:"skip_cert_verify"` // 全局跳过 SSL 证书验证
 
 	filePath string `yaml:"-"` // 配置文件路径，用于保存
+}
+
+// GeoIPConfig controls GeoIP-based region routing.
+type GeoIPConfig struct {
+	Enabled      bool   `yaml:"enabled"`       // 是否启用 GeoIP 地域分区
+	DatabasePath string `yaml:"database_path"` // GeoLite2-Country.mmdb 文件路径
+	Listen       string `yaml:"listen"`        // GeoIP 路由监听地址，默认使用 listener 配置
+	Port         uint16 `yaml:"port"`          // GeoIP 路由监听端口，默认 2323
 }
 
 // ListenerConfig defines how the HTTP proxy should listen for clients.

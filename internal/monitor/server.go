@@ -204,7 +204,31 @@ func (s *Server) handleNodes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 只返回初始检查通过的可用节点
-	payload := map[string]any{"nodes": s.mgr.SnapshotFiltered(true)}
+	filtered := s.mgr.SnapshotFiltered(true)
+	allNodes := s.mgr.Snapshot()
+	totalNodes := len(allNodes)
+
+	// Calculate region statistics
+	regionStats := make(map[string]int)
+	regionHealthy := make(map[string]int)
+	for _, snap := range allNodes {
+		region := snap.Region
+		if region == "" {
+			region = "other"
+		}
+		regionStats[region]++
+		// Count healthy nodes per region
+		if snap.InitialCheckDone && snap.Available && !snap.Blacklisted {
+			regionHealthy[region]++
+		}
+	}
+
+	payload := map[string]any{
+		"nodes":          filtered,
+		"total_nodes":    totalNodes,
+		"region_stats":   regionStats,
+		"region_healthy": regionHealthy,
+	}
 	writeJSON(w, payload)
 }
 
