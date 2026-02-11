@@ -552,7 +552,7 @@ func buildShadowsocksOptions(u *url.URL) (option.ShadowsocksOutboundOptions, err
 
 	query := u.Query()
 	if plugin := query.Get("plugin"); plugin != "" {
-		opts.Plugin = plugin
+		opts.Plugin = normalizePluginName(plugin)
 		opts.PluginOptions = query.Get("plugin-opts")
 	}
 
