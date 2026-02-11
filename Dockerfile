@@ -19,7 +19,7 @@ RUN git clone https://github.com/shadowsocks/simple-obfs.git /tmp/simple-obfs &&
     git submodule update --init --recursive && \
     ./autogen.sh && \
     ./configure --disable-documentation && \
-    make && \
+    make CFLAGS="-Wno-error=stringop-overread" && \
     make install
 
 # Stage 2: Build Go application
