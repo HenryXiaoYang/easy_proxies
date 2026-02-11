@@ -552,8 +552,14 @@ func buildShadowsocksOptions(u *url.URL) (option.ShadowsocksOutboundOptions, err
 
 	query := u.Query()
 	if plugin := query.Get("plugin"); plugin != "" {
-		opts.Plugin = normalizePluginName(plugin)
-		opts.PluginOptions = query.Get("plugin-opts")
+		pluginName, pluginOpts := parsePluginString(plugin)
+		opts.Plugin = normalizePluginName(pluginName)
+		// Use explicit plugin-opts if provided, otherwise use parsed options
+		if explicitOpts := query.Get("plugin-opts"); explicitOpts != "" {
+			opts.PluginOptions = explicitOpts
+		} else {
+			opts.PluginOptions = pluginOpts
+		}
 	}
 
 	return opts, nil

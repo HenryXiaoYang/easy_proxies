@@ -4,6 +4,64 @@ import (
 	"testing"
 )
 
+func TestParsePluginString(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		expectedName string
+		expectedOpts string
+	}{
+		{
+			name:         "empty string",
+			input:        "",
+			expectedName: "",
+			expectedOpts: "",
+		},
+		{
+			name:         "plugin name only",
+			input:        "simple-obfs",
+			expectedName: "simple-obfs",
+			expectedOpts: "",
+		},
+		{
+			name:         "plugin with single option",
+			input:        "simple-obfs;obfs=http",
+			expectedName: "simple-obfs",
+			expectedOpts: "obfs=http",
+		},
+		{
+			name:         "plugin with multiple options",
+			input:        "simple-obfs;obfs=http;obfs-host=www.bing.com",
+			expectedName: "simple-obfs",
+			expectedOpts: "obfs=http;obfs-host=www.bing.com",
+		},
+		{
+			name:         "plugin with spaces",
+			input:        " simple-obfs ; obfs=http ",
+			expectedName: "simple-obfs",
+			expectedOpts: "obfs=http",
+		},
+		{
+			name:         "v2ray-plugin with tls",
+			input:        "v2ray-plugin;tls;host=example.com",
+			expectedName: "v2ray-plugin",
+			expectedOpts: "tls;host=example.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			name, opts := parsePluginString(tt.input)
+			if name != tt.expectedName {
+				t.Errorf("parsePluginString(%q) name = %q, expected %q", tt.input, name, tt.expectedName)
+			}
+			if opts != tt.expectedOpts {
+				t.Errorf("parsePluginString(%q) opts = %q, expected %q", tt.input, opts, tt.expectedOpts)
+			}
+		})
+	}
+}
+
 func TestNormalizePluginName(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -91,5 +149,11 @@ func TestPluginNameMapCompleteness(t *testing.T) {
 func BenchmarkNormalizePluginName(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		normalizePluginName("simple-obfs")
+	}
+}
+
+func BenchmarkParsePluginString(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		parsePluginString("simple-obfs;obfs=http;obfs-host=www.bing.com")
 	}
 }

@@ -16,6 +16,27 @@ var pluginNameMap = map[string]string{
 	"kcptun":       "kcptun",
 }
 
+// parsePluginString splits a plugin string like "simple-obfs;obfs=http;obfs-host=example.com"
+// into the plugin name and its options string.
+// Returns (pluginName, pluginOptions)
+func parsePluginString(pluginStr string) (string, string) {
+	if pluginStr == "" {
+		return "", ""
+	}
+
+	// Split by semicolon - first part is plugin name, rest are options
+	parts := strings.SplitN(pluginStr, ";", 2)
+	pluginName := strings.TrimSpace(parts[0])
+
+	if len(parts) > 1 {
+		// Join remaining parts as options
+		pluginOpts := strings.TrimSpace(parts[1])
+		return pluginName, pluginOpts
+	}
+
+	return pluginName, ""
+}
+
 // normalizePluginName maps subscription plugin names to actual binary names.
 // It performs case-insensitive matching and logs when mappings occur to aid
 // in debugging subscription parsing issues.
