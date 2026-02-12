@@ -11,12 +11,45 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
+
+// flexInt is an int type that can be unmarshalled from both YAML string and
+// integer values. Some Clash subscription providers emit port or alterId as
+// quoted strings (e.g. "443" instead of 443), which causes strict YAML
+// unmarshalling to fail.
+type flexInt int
+
+func (f *flexInt) UnmarshalYAML(value *yaml.Node) error {
+	// Try integer first (most common case)
+	var intVal int
+	if err := value.Decode(&intVal); err == nil {
+		*f = flexInt(intVal)
+		return nil
+	}
+
+	// Fall back to string → int conversion
+	var strVal string
+	if err := value.Decode(&strVal); err != nil {
+		return fmt.Errorf("cannot unmarshal %q into int", value.Value)
+	}
+	strVal = strings.TrimSpace(strVal)
+	if strVal == "" {
+		*f = 0
+		return nil
+	}
+	parsed, err := strconv.Atoi(strVal)
+	if err != nil {
+		return fmt.Errorf("cannot convert %q to int: %w", strVal, err)
+	}
+	*f = flexInt(parsed)
+	return nil
+}
 
 // Config describes the high level settings for the proxy pool server.
 type Config struct {
@@ -30,7 +63,7 @@ type Config struct {
 	Nodes               []NodeConfig              `yaml:"nodes"`
 	NodesFile           string                    `yaml:"nodes_file"`    // 节点文件路径，每行一个 URI
 	Subscriptions       []string                  `yaml:"subscriptions"` // 订阅链接列表
-	ExternalIP          string                    `yaml:"external_ip"`      // 外部 IP 地址，用于导出时替换 0.0.0.0
+	ExternalIP          string                    `yaml:"external_ip"`   // 外部 IP 地址，用于导出时替换 0.0.0.0
 	LogLevel            string                    `yaml:"log_level"`
 	SkipCertVerify      bool                      `yaml:"skip_cert_verify"` // 全局跳过 SSL 证书验证
 
@@ -646,27 +679,27 @@ type clashConfig struct {
 }
 
 type clashProxy struct {
-	Name           string                 `yaml:"name"`
-	Type           string                 `yaml:"type"`
-	Server         string                 `yaml:"server"`
-	Port           int                    `yaml:"port"`
-	UUID           string                 `yaml:"uuid"`
-	Password       string                 `yaml:"password"`
-	Cipher         string                 `yaml:"cipher"`
-	AlterId        int                    `yaml:"alterId"`
-	Network        string                 `yaml:"network"`
-	TLS            bool                   `yaml:"tls"`
-	SkipCertVerify bool                   `yaml:"skip-cert-verify"`
-	ServerName     string                 `yaml:"servername"`
-	SNI            string                 `yaml:"sni"`
-	Flow           string                 `yaml:"flow"`
-	UDP            bool                   `yaml:"udp"`
-	WSOpts         *clashWSOptions        `yaml:"ws-opts"`
-	GrpcOpts       *clashGrpcOptions      `yaml:"grpc-opts"`
-	RealityOpts    *clashRealityOptions   `yaml:"reality-opts"`
-	ClientFingerprint string              `yaml:"client-fingerprint"`
-	Plugin         string                 `yaml:"plugin"`
-	PluginOpts     map[string]interface{} `yaml:"plugin-opts"`
+	Name              string                 `yaml:"name"`
+	Type              string                 `yaml:"type"`
+	Server            string                 `yaml:"server"`
+	Port              flexInt                `yaml:"port"`
+	UUID              string                 `yaml:"uuid"`
+	Password          string                 `yaml:"password"`
+	Cipher            string                 `yaml:"cipher"`
+	AlterId           flexInt                `yaml:"alterId"`
+	Network           string                 `yaml:"network"`
+	TLS               bool                   `yaml:"tls"`
+	SkipCertVerify    bool                   `yaml:"skip-cert-verify"`
+	ServerName        string                 `yaml:"servername"`
+	SNI               string                 `yaml:"sni"`
+	Flow              string                 `yaml:"flow"`
+	UDP               bool                   `yaml:"udp"`
+	WSOpts            *clashWSOptions        `yaml:"ws-opts"`
+	GrpcOpts          *clashGrpcOptions      `yaml:"grpc-opts"`
+	RealityOpts       *clashRealityOptions   `yaml:"reality-opts"`
+	ClientFingerprint string                 `yaml:"client-fingerprint"`
+	Plugin            string                 `yaml:"plugin"`
+	PluginOpts        map[string]interface{} `yaml:"plugin-opts"`
 }
 
 type clashWSOptions struct {
